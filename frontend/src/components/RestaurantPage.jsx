@@ -141,9 +141,40 @@ const RestaurantPage = ({ menuName, location, onBack }) => {
       size: 10 // 최대 10개
     };
 
+    // 🆕 메뉴명에서 핵심 키워드만 추출하는 함수 (안전망)
+    const extractCoreKeyword = (name) => {
+      // 제거할 수식어 목록
+      const modifiers = [
+        '따뜻한', '시원한', '차가운', '뜨거운', '얼큰한', '매운', '순한',
+        '고급', '프리미엄', '특별한', '신선한', '건강한', '든든한',
+        '간편한', '가벼운', '푸짐한', '깔끔한', '부드러운', '바삭한',
+        '달콤한', '새콤한', '고소한', '진한', '담백한',
+        '정통', '전통', '수제', '직화', '숯불', '수타'
+      ];
+      
+      let keyword = name.trim();
+      
+      // 앞의 수식어 제거
+      modifiers.forEach(modifier => {
+        keyword = keyword.replace(new RegExp(`^${modifier}\\s*`, 'g'), '');
+      });
+      
+      // 뒤의 수식어 제거 ("생선구이 정식" -> "생선구이")
+      keyword = keyword.replace(/\s*(정식|세트|코스|요리|전문점|맛집|식당)$/g, '');
+      
+      return keyword.trim() || name; // 빈 문자열이면 원본 반환
+    };
+
+    // 검색어 정제
+    const searchKeyword = extractCoreKeyword(menuName);
+    console.log('🔍 원본 메뉴명:', menuName);
+    if (searchKeyword !== menuName) {
+      console.log('🔍 정제된 검색어:', searchKeyword);
+    }
+    
     // 키워드로 장소 검색
-    console.log('🔍 장소 검색 시작:', menuName, `(반경 2km)`);
-    ps.keywordSearch(menuName, (data, status) => {
+    console.log('🔍 장소 검색 시작:', searchKeyword, `(반경 2km)`);
+    ps.keywordSearch(searchKeyword, (data, status) => {
       console.log('🔍 검색 결과 상태:', status);
       console.log('🔍 검색 결과 데이터:', data);
       

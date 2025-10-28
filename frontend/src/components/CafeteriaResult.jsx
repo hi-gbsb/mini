@@ -113,7 +113,7 @@ const CafeteriaResult = ({ recommendation, onSelectMenu, onShowRoulette, onBack 
               {/* 카드 본문 */}
               <div className="card-body">
                 <h3 className="card-title text-3xl">
-                  {item.menu}
+                  {item.display_name || item.menu}
                 </h3>
                 <div className="flex gap-2 flex-wrap mb-2">
                   <div className="badge badge-outline">{item.category}</div>
@@ -154,7 +154,7 @@ const CafeteriaResult = ({ recommendation, onSelectMenu, onShowRoulette, onBack 
             disabled={!selectedMenu}
             className="btn btn-lg btn-primary"
           >
-            {selectedMenu ? `${selectedMenu.menu} 주변 식당 찾기 🔍` : '메뉴를 선택해주세요'}
+            {selectedMenu ? `${selectedMenu.display_name || selectedMenu.menu} 주변 식당 찾기 🔍` : '메뉴를 선택해주세요'}
           </button>
         </div>
 

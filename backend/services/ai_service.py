@@ -99,6 +99,13 @@ class AIService:
 {json.dumps(user_input, ensure_ascii=False, indent=2)}
 ---
 
+**중요 규칙**:
+1. **menu** 필드는 지도 검색용으로 수식어 없이 간결하게 작성하세요.
+   - 좋은 예: "생선구이", "냉면", "김치찌개", "돈카츠", "파스타"
+   - 나쁜 예: "따뜻한 생선구이", "시원한 평양냉면", "고급 프리미엄 돈카츠"
+2. **display_name** 필드는 사용자에게 보여줄 풍부한 표현으로 작성하세요.
+   - 예: "따뜻한 생선구이 정식", "시원한 평양냉면", "바삭한 프리미엄 돈카츠"
+
 **추천 형식**:
 {{
     "mode": {{
@@ -109,7 +116,8 @@ class AIService:
     "recommendations": [
         {{
             "type": "상위호환",
-            "menu": "메뉴명",
+            "menu": "생선구이",
+            "display_name": "따뜻한 생선구이 정식",
             "category": "음식 카테고리",
             "reason": "추천 이유 (50자 이내)",
             "price_range": "가격대",
@@ -132,12 +140,14 @@ class AIService:
         }},
         {{
             "type": "비슷한카테고리",
-            "menu": "...",
+            "menu": "간결한 메뉴명",
+            "display_name": "풍부한 표현의 메뉴명",
             ...
         }},
         {{
             "type": "날씨기반",
-            "menu": "...",
+            "menu": "간결한 메뉴명",
+            "display_name": "풍부한 표현의 메뉴명",
             ...
         }}
     ],

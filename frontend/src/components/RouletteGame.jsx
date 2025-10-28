@@ -110,7 +110,7 @@ const RouletteGame = ({ menus, onResult, onBack }) => {
                         transformOrigin: '0 0'
                       }}
                     >
-                      {menu.menu}
+                      {menu.display_name || menu.menu}
                     </div>
                   </div>
                 );
@@ -147,7 +147,7 @@ const RouletteGame = ({ menus, onResult, onBack }) => {
             <div className="card-body text-center">
               <div className="text-6xl mb-4">🎉</div>
               <h2 className="card-title text-4xl justify-center mb-4">
-                {result.menu}
+                {result.display_name || result.menu}
               </h2>
               <div className="flex gap-2 justify-center mb-4">
                 <div className="badge badge-lg badge-outline">{result.category}</div>
@@ -186,7 +186,7 @@ const RouletteGame = ({ menus, onResult, onBack }) => {
                     className="card bg-base-100 shadow"
                   >
                     <div className="card-body p-3 text-center">
-                      <p className="font-semibold">{menu.menu}</p>
+                      <p className="font-semibold">{menu.display_name || menu.menu}</p>
                       <p className="text-xs opacity-70">{menu.category}</p>
                     </div>
                   </div>
