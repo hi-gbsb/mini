@@ -6,47 +6,152 @@ const RestaurantPage = ({ menuName, location, onBack }) => {
 
   useEffect(() => {
     // 카카오맵 API 스크립트 로드
+    const KAKAO_API_KEY = import.meta.env.VITE_KAKAO_API_KEY || '97530b44b3984f6777b7a8897d33e173';
+    console.log('🗺️ 카카오맵 API 키:', KAKAO_API_KEY);
+    
+    // 이미 로드된 스크립트가 있으면 제거
+    const existingScript = document.querySelector('script[src*="dapi.kakao.com"]');
+    if (existingScript) {
+      existingScript.remove();
+    }
+    
     const script = document.createElement('script');
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KAKAO_API_KEY&libraries=services&autoload=false`;
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_API_KEY}&libraries=services&autoload=false`;
     script.async = true;
     
     script.onload = () => {
-      window.kakao.maps.load(() => {
-        setIsMapLoaded(true);
-        initMap();
-      });
+      console.log('✅ 카카오맵 스크립트 로드 성공');
+      if (window.kakao && window.kakao.maps) {
+        window.kakao.maps.load(() => {
+          console.log('✅ 카카오맵 초기화 성공');
+          setIsMapLoaded(true);
+          // initMap()은 별도 useEffect에서 실행
+        });
+      } else {
+        console.error('❌ window.kakao.maps가 없습니다');
+        setError('카카오맵 API를 초기화할 수 없습니다.');
+      }
     };
 
-    script.onerror = () => {
-      setError('카카오맵을 불러올 수 없습니다.');
+    script.onerror = (e) => {
+      console.error('❌ 카카오맵 스크립트 로드 실패:', e);
+      setError('카카오맵을 불러올 수 없습니다. API 키를 확인해주세요.');
     };
 
     document.head.appendChild(script);
 
     return () => {
-      document.head.removeChild(script);
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
     };
   }, [menuName, location]);
 
+  // isMapLoaded가 true가 되면 지도 초기화
+  useEffect(() => {
+    if (isMapLoaded) {
+      console.log('🗺️ DOM 렌더링 대기 중...');
+      // DOM이 렌더링될 시간을 주기 위해 setTimeout 사용
+      const timer = setTimeout(() => {
+        initMap();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isMapLoaded]);
+
   const initMap = () => {
+    console.log('🗺️ initMap 실행, 검색어:', menuName);
     const container = document.getElementById('map');
-    if (!container) return;
+    if (!container) {
+      console.error('❌ map 컨테이너를 찾을 수 없습니다');
+      return;
+    }
 
-    const options = {
-      center: new window.kakao.maps.LatLng(37.5665, 126.9780), // 서울 기본 좌표
-      level: 3
-    };
+    try {
+      // 기본 좌표 (서울)
+      let defaultLat = 37.5665;
+      let defaultLng = 126.9780;
 
-    const map = new window.kakao.maps.Map(container, options);
-    
+      const options = {
+        center: new window.kakao.maps.LatLng(defaultLat, defaultLng),
+        level: 4 // 조금 더 넓은 범위
+      };
+
+      const map = new window.kakao.maps.Map(container, options);
+      console.log('✅ 지도 생성 성공');
+      
+      // 사용자 현재 위치 가져오기
+      if (navigator.geolocation) {
+        console.log('📍 현재 위치 가져오는 중...');
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            console.log(`✅ 현재 위치: ${lat}, ${lng}`);
+            
+            const locPosition = new window.kakao.maps.LatLng(lat, lng);
+            map.setCenter(locPosition);
+            
+            // 현재 위치 마커 표시
+            const currentMarker = new window.kakao.maps.Marker({
+              position: locPosition,
+              map: map
+            });
+            
+            const infowindow = new window.kakao.maps.InfoWindow({
+              content: '<div style="padding:5px;font-size:12px;color:#4F46E5;">📍 현재 위치</div>'
+            });
+            infowindow.open(map, currentMarker);
+            
+            // 현재 위치 기준으로 음식점 검색
+            searchPlaces(map, lat, lng);
+          },
+          (error) => {
+            console.warn('⚠️ 위치 정보를 가져올 수 없습니다:', error.message);
+            console.log('📍 기본 위치(서울)로 검색합니다');
+            // 위치 권한이 없으면 서울 중심으로 검색
+            searchPlaces(map, defaultLat, defaultLng);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+          }
+        );
+      } else {
+        console.warn('⚠️ 브라우저가 위치 정보를 지원하지 않습니다');
+        searchPlaces(map, defaultLat, defaultLng);
+      }
+      
+    } catch (error) {
+      console.error('❌ 지도 초기화 중 오류:', error);
+      setError('지도를 초기화하는 중 오류가 발생했습니다.');
+    }
+  };
+
+  const searchPlaces = (map, lat, lng) => {
     // 장소 검색 객체 생성
     const ps = new window.kakao.maps.services.Places();
+    
+    // 현재 위치 기준으로 반경 내 검색
+    const searchOption = {
+      location: new window.kakao.maps.LatLng(lat, lng),
+      radius: 2000, // 2km 반경
+      size: 10 // 최대 10개
+    };
 
     // 키워드로 장소 검색
+    console.log('🔍 장소 검색 시작:', menuName, `(반경 2km)`);
     ps.keywordSearch(menuName, (data, status) => {
+      console.log('🔍 검색 결과 상태:', status);
+      console.log('🔍 검색 결과 데이터:', data);
+      
       if (status === window.kakao.maps.services.Status.OK) {
+        console.log(`✅ ${data.length}개의 장소를 찾았습니다`);
+        
         // 검색 결과를 지도에 표시
-        data.slice(0, 5).forEach((place, index) => {
+        data.forEach((place, index) => {
           const markerPosition = new window.kakao.maps.LatLng(place.y, place.x);
           
           const marker = new window.kakao.maps.Marker({
@@ -56,21 +161,45 @@ const RestaurantPage = ({ menuName, location, onBack }) => {
 
           // 인포윈도우 생성
           const infowindow = new window.kakao.maps.InfoWindow({
-            content: `<div style="padding:5px;font-size:12px;">${index + 1}. ${place.place_name}</div>`
+            content: `<div style="padding:8px;font-size:12px;">
+              <strong>${index + 1}. ${place.place_name}</strong><br/>
+              <span style="font-size:11px;color:#666;">${place.road_address_name || place.address_name}</span><br/>
+              <span style="font-size:11px;color:#FF6B35;">📞 ${place.phone || '전화번호 없음'}</span>
+            </div>`
           });
 
           window.kakao.maps.event.addListener(marker, 'click', () => {
             infowindow.open(map, marker);
           });
+          
+          // 첫 번째 마커는 기본으로 정보창 표시
+          if (index === 0) {
+            infowindow.open(map, marker);
+          }
         });
 
-        // 첫 번째 결과로 지도 중심 이동
+        // 검색 결과가 있으면 첫 번째 결과 주변으로 지도 범위 조정
         if (data.length > 0) {
-          const firstPlace = data[0];
-          map.setCenter(new window.kakao.maps.LatLng(firstPlace.y, firstPlace.x));
+          const bounds = new window.kakao.maps.LatLngBounds();
+          
+          // 현재 위치 포함
+          bounds.extend(new window.kakao.maps.LatLng(lat, lng));
+          
+          // 검색 결과들 포함
+          data.forEach(place => {
+            bounds.extend(new window.kakao.maps.LatLng(place.y, place.x));
+          });
+          
+          map.setBounds(bounds);
+          console.log('✅ 지도 범위 조정 완료');
         }
+      } else if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
+        console.warn('⚠️ 검색 결과가 없습니다');
+        alert(`주변 2km 내에 "${menuName}" 음식점을 찾을 수 없습니다.\n검색 범위를 확대해보세요.`);
+      } else if (status === window.kakao.maps.services.Status.ERROR) {
+        console.error('❌ 검색 중 오류 발생');
       }
-    });
+    }, searchOption);
   };
 
   return (
@@ -118,13 +247,13 @@ const RestaurantPage = ({ menuName, location, onBack }) => {
           <div className="p-6 bg-gray-50">
             <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
               <p className="text-sm text-gray-700">
-                <span className="font-semibold">💡 Tip:</span> 지도에서 마커를 클릭하면 식당 정보를 확인할 수 있습니다.
+                <span className="font-semibold">📍 현재 위치 기반:</span> 주변 2km 반경 내 음식점을 표시합니다.
               </p>
             </div>
             
-            <div className="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+            <div className="mt-4 bg-green-50 border-l-4 border-green-400 p-4 rounded">
               <p className="text-sm text-gray-700">
-                <span className="font-semibold">⚠️ 참고:</span> 카카오맵 API 키를 설정하면 실제 주변 식당 정보가 표시됩니다.
+                <span className="font-semibold">💡 Tip:</span> 마커를 클릭하면 상세 정보(주소, 전화번호)를 확인할 수 있습니다.
               </p>
             </div>
           </div>

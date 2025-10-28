@@ -1,4 +1,4 @@
-from openai import OpenAI
+import google.generativeai as genai
 from typing import Dict, List, Optional
 import os
 from dotenv import load_dotenv
@@ -8,85 +8,110 @@ load_dotenv()
 
 class AIService:
     def __init__(self):
-        api_key = os.getenv("OPENAI_API_KEY")
+        # Gemini API 설정
+        api_key = os.getenv("GEMINI_API_KEY", "AIzaSyBg5BiDftPSox4lsaI8kk4C62-qUPkk-58")
         if api_key:
-            self.client = OpenAI(api_key=api_key)
-            self.model = "gpt-3.5-turbo"
+            genai.configure(api_key=api_key)
+            self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
             self.use_ai = True
-            print("✅ OpenAI API 연결됨")
+            print("✅ Gemini API 연결됨")
         else:
-            self.client = None
+            self.model = None
             self.use_ai = False
-            print("⚠️  OpenAI API 키가 없습니다. 규칙 기반 추천 로직을 사용합니다.")
+            print("⚠️  Gemini API 키가 없습니다. 규칙 기반 추천 로직을 사용합니다.")
     
-    async def recommend_lunch(
+    async def recommend_from_cafeteria_menu(
         self,
         weather: Dict,
-        preferences: Optional[Dict] = None
+        cafeteria_menu: str,
+        location: Optional[Dict] = None
     ) -> Dict:
-        """날씨와 선호도를 기반으로 점심 메뉴 추천"""
+        """구내식당 메뉴를 기반으로 3가지 외부 메뉴 추천"""
         
         # API 키가 없으면 규칙 기반 추천 사용
         if not self.use_ai:
-            return self._get_smart_recommendation(weather, preferences)
-        
-        # 프롬프트 생성
-        prompt = self._build_prompt(weather, preferences)
+            return self._get_fallback_cafeteria_recommendation(weather, cafeteria_menu)
         
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """당신은 직장인들을 위한 점심 메뉴 추천 전문가입니다. 
-                        날씨, 계절, 온도를 고려하여 최적의 메뉴를 추천해주세요.
-                        응답은 반드시 JSON 형식으로 다음 구조를 따라주세요:
-                        {
-                            "menu": "메뉴명",
-                            "category": "한식/중식/일식/양식/분식",
-                            "reason": "추천 이유 (100자 이내)",
-                            "temperature_match": "온도와의 연관성",
-                            "alternatives": ["대체 메뉴1", "대체 메뉴2"]
-                        }"""
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                temperature=0.8,
-                max_tokens=500
-            )
+            prompt = f"""
+당신은 구내식당을 이용하는 직장인을 위한 메뉴 추천 전문가입니다.
+
+오늘 구내식당 메뉴: {cafeteria_menu}
+
+현재 날씨 정보:
+- 위치: {weather.get('location', '서울')}
+- 기온: {weather.get('temperature', 20)}°C
+- 날씨: {weather.get('sky_condition', '맑음')}
+- 강수: {weather.get('precipitation', '없음')}
+
+구내식당에서 먹기 싫은 날을 위해, 다음 3가지 카테고리로 외부 메뉴를 추천해주세요:
+
+1. **상위호환 메뉴**: 구내식당 메뉴의 고급 버전 또는 더 맛있는 버전
+2. **비슷한 카테고리**: 같은 계열이지만 다른 음식
+3. **날씨 기반 예외 메뉴**: 현재 날씨에 어울리지만 완전히 다른 종류의 음식
+
+반드시 아래 JSON 형식으로만 응답해주세요:
+{{
+    "cafeteria_menu": "{cafeteria_menu}",
+    "recommendations": [
+        {{
+            "type": "상위호환",
+            "menu": "메뉴명",
+            "category": "음식 카테고리",
+            "reason": "추천 이유 (50자 이내)",
+            "price_range": "가격대 (예: 10,000-15,000원)"
+        }},
+        {{
+            "type": "비슷한카테고리",
+            "menu": "메뉴명",
+            "category": "음식 카테고리",
+            "reason": "추천 이유 (50자 이내)",
+            "price_range": "가격대"
+        }},
+        {{
+            "type": "날씨기반",
+            "menu": "메뉴명",
+            "category": "음식 카테고리",
+            "reason": "추천 이유 (50자 이내)",
+            "price_range": "가격대"
+        }}
+    ],
+    "weather_summary": "날씨 요약 (30자 이내)"
+}}
+"""
             
-            # 응답 파싱
-            content = response.choices[0].message.content
+            response = self.model.generate_content(prompt)
+            content = response.text
             
-            # JSON 파싱 시도
+            # JSON 추출 (마크다운 코드 블록 제거)
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+            
+            # JSON 파싱
             try:
                 recommendation = json.loads(content)
-            except json.JSONDecodeError:
-                # JSON 파싱 실패 시 텍스트에서 추출
-                recommendation = {
-                    "menu": "김치찌개",
-                    "category": "한식",
-                    "reason": content[:100] if len(content) > 100 else content,
-                    "temperature_match": "따뜻한 음식으로 적합합니다.",
-                    "alternatives": ["된장찌개", "부대찌개"]
-                }
+            except json.JSONDecodeError as e:
+                print(f"JSON 파싱 오류: {str(e)}")
+                print(f"응답 내용: {content}")
+                return self._get_fallback_cafeteria_recommendation(weather, cafeteria_menu)
             
             # 날씨 정보 추가
             recommendation["weather_info"] = {
                 "location": weather.get("location"),
                 "temperature": weather.get("temperature"),
-                "condition": weather.get("sky_condition")
+                "condition": weather.get("sky_condition"),
+                "precipitation": weather.get("precipitation")
             }
             
             return recommendation
             
         except Exception as e:
             print(f"AI 추천 오류: {str(e)}")
-            return self._get_fallback_recommendation(weather)
+            import traceback
+            traceback.print_exc()
+            return self._get_fallback_cafeteria_recommendation(weather, cafeteria_menu)
     
     def _build_prompt(self, weather: Dict, preferences: Optional[Dict]) -> str:
         """프롬프트 생성"""
@@ -136,41 +161,32 @@ class AIService:
         
         try:
             prompt = f"""
-            '{menu_name}' 메뉴의 {num_servings}인분 레시피를 작성해주세요.
+'{menu_name}' 메뉴의 {num_servings}인분 레시피를 작성해주세요.
+
+다음 형식으로 JSON 응답해주세요:
+{{
+    "menu_name": "메뉴명",
+    "servings": {num_servings},
+    "ingredients": [
+        {{"name": "재료명", "amount": "양"}},
+    ],
+    "steps": [
+        "1단계 설명",
+        "2단계 설명",
+    ],
+    "cooking_time": "조리 시간",
+    "difficulty": "쉬움/보통/어려움"
+}}
+"""
             
-            다음 형식으로 JSON 응답해주세요:
-            {{
-                "menu_name": "메뉴명",
-                "servings": {num_servings},
-                "ingredients": [
-                    {{"name": "재료명", "amount": "양"}},
-                ],
-                "steps": [
-                    "1단계 설명",
-                    "2단계 설명",
-                ],
-                "cooking_time": "조리 시간",
-                "difficulty": "쉬움/보통/어려움"
-            }}
-            """
+            response = self.model.generate_content(prompt)
+            content = response.text
             
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "당신은 요리 전문가입니다. 자세하고 실용적인 레시피를 제공해주세요."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                temperature=0.7,
-                max_tokens=1000
-            )
-            
-            content = response.choices[0].message.content
+            # JSON 추출
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
             
             try:
                 recipe = json.loads(content)
@@ -366,6 +382,47 @@ class AIService:
                 "location": weather.get("location"),
                 "temperature": weather.get("temperature"),
                 "condition": weather.get("sky_condition")
+            }
+        }
+    
+    def _get_fallback_cafeteria_recommendation(self, weather: Dict, cafeteria_menu: str) -> Dict:
+        """API 오류 시 기본 추천"""
+        temp = weather.get("temperature", 20)
+        
+        # 간단한 규칙 기반 추천
+        recommendations = [
+            {
+                "type": "상위호환",
+                "menu": "프리미엄 한정식",
+                "category": "한식",
+                "reason": "구내식당보다 고급스러운 한식 코스",
+                "price_range": "15,000-20,000원"
+            },
+            {
+                "type": "비슷한카테고리",
+                "menu": "김치찌개",
+                "category": "한식",
+                "reason": "구수하고 든든한 한식",
+                "price_range": "8,000-10,000원"
+            },
+            {
+                "type": "날씨기반",
+                "menu": "냉면" if temp > 25 else "칼국수",
+                "category": "한식",
+                "reason": f"{'더운' if temp > 25 else '쌀쌀한'} 날씨에 어울리는 메뉴",
+                "price_range": "8,000-12,000원"
+            }
+        ]
+        
+        return {
+            "cafeteria_menu": cafeteria_menu,
+            "recommendations": recommendations,
+            "weather_summary": f"{temp}°C, {weather.get('sky_condition', '맑음')}",
+            "weather_info": {
+                "location": weather.get("location"),
+                "temperature": weather.get("temperature"),
+                "condition": weather.get("sky_condition"),
+                "precipitation": weather.get("precipitation")
             }
         }
     

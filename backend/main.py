@@ -33,6 +33,11 @@ class RecommendRequest(BaseModel):
     num_people: int = 1
     moods: Optional[list] = None  # 다인 모드일 때 각 사람의 기분
 
+class CafeteriaMenuRequest(BaseModel):
+    location: str = "서울"
+    cafeteria_menu: str  # 구내식당 메뉴 (텍스트)
+    user_location: Optional[Dict] = None  # 위도, 경도
+
 class RecipeRequest(BaseModel):
     menu_name: str
     num_servings: int = 1
@@ -77,6 +82,27 @@ async def recommend_menu(request: RecommendRequest):
         
         # 3. AI 추천
         recommendation = await ai_service.recommend_lunch(weather_data, preferences)
+        
+        return {
+            "success": True,
+            "data": recommendation
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/recommend-from-cafeteria")
+async def recommend_from_cafeteria(request: CafeteriaMenuRequest):
+    """구내식당 메뉴 기반 외부 메뉴 추천"""
+    try:
+        # 1. 날씨 정보 가져오기
+        weather_data = await weather_service.get_weather(request.location)
+        
+        # 2. 구내식당 메뉴 기반 추천
+        recommendation = await ai_service.recommend_from_cafeteria_menu(
+            weather_data,
+            request.cafeteria_menu,
+            request.user_location
+        )
         
         return {
             "success": True,

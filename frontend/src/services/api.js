@@ -33,5 +33,16 @@ export const recipeAPI = {
   },
 };
 
+export const cafeteriaAPI = {
+  getRecommendation: async (location, cafeteriaMenu, userLocation = null) => {
+    const response = await api.post('/api/recommend-from-cafeteria', {
+      location,
+      cafeteria_menu: cafeteriaMenu,
+      user_location: userLocation
+    });
+    return response.data;
+  },
+};
+
 export default api;
 
