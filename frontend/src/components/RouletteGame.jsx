@@ -40,21 +40,21 @@ const RouletteGame = ({ menus, onResult, onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary to-secondary py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* 헤더 */}
         <div className="text-center mb-8">
           <button
             onClick={onBack}
-            className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-gray-700 px-4 py-2 rounded-lg hover:bg-white transition-all"
+            className="btn btn-ghost absolute top-4 left-4"
           >
             ← 뒤로가기
           </button>
           
-          <h1 className="text-5xl font-bold text-white mb-4">
-            🎰 메뉴 룰렛
+          <h1 className="text-6xl font-bold text-base-100 mb-4 drop-shadow-lg">
+            🎰 밥뭇나?! 룰렛
           </h1>
-          <p className="text-white text-lg">
+          <p className="text-base-100 text-xl drop-shadow">
             운명에 맡겨보세요!
           </p>
         </div>
@@ -69,36 +69,45 @@ const RouletteGame = ({ menus, onResult, onBack }) => {
           {/* 룰렛 휠 */}
           <div className="relative w-80 h-80 md:w-96 md:h-96">
             <div
-              className="w-full h-full rounded-full shadow-2xl transition-transform duration-[4000ms] ease-out"
+              className="w-full h-full rounded-full shadow-2xl transition-transform duration-[4000ms] ease-out overflow-hidden"
               style={{
-                transform: `rotate(${rotation}deg)`,
-                background: 'white'
+                transform: `rotate(${rotation}deg)`
               }}
             >
               {/* 룰렛 섹션들 */}
               {menus.map((menu, index) => {
                 const degreePerItem = 360 / menus.length;
                 const startAngle = index * degreePerItem;
+                const endAngle = startAngle + degreePerItem;
                 const color = colors[index % colors.length];
+
+                // 원의 중심에서 시작하여 호를 그리는 polygon 생성
+                const points = ['50% 50%']; // 중심점
+                
+                // 시작 각도부터 끝 각도까지 여러 점을 생성하여 부드러운 호 만들기
+                const segments = 20;
+                for (let i = 0; i <= segments; i++) {
+                  const angle = startAngle + (degreePerItem * i / segments) - 90;
+                  const x = 50 + 50 * Math.cos(angle * Math.PI / 180);
+                  const y = 50 + 50 * Math.sin(angle * Math.PI / 180);
+                  points.push(`${x}% ${y}%`);
+                }
 
                 return (
                   <div
                     key={index}
                     className={`absolute w-full h-full ${color}`}
                     style={{
-                      clipPath: `polygon(50% 50%, ${50 + 50 * Math.cos((startAngle - 90) * Math.PI / 180)}% ${50 + 50 * Math.sin((startAngle - 90) * Math.PI / 180)}%, ${50 + 50 * Math.cos((startAngle + degreePerItem - 90) * Math.PI / 180)}% ${50 + 50 * Math.sin((startAngle + degreePerItem - 90) * Math.PI / 180)}%)`,
-                      borderRadius: '50%'
+                      clipPath: `polygon(${points.join(', ')})`,
                     }}
                   >
                     <div
-                      className="absolute text-white font-bold text-sm md:text-base"
+                      className="absolute text-white font-bold text-sm md:text-base drop-shadow-lg whitespace-nowrap"
                       style={{
                         top: '50%',
                         left: '50%',
-                        transform: `rotate(${startAngle + degreePerItem / 2}deg) translate(0, -100px)`,
-                        transformOrigin: '0 0',
-                        width: '100px',
-                        textAlign: 'center'
+                        transform: `rotate(${startAngle + degreePerItem / 2}deg) translate(-50%, -130px)`,
+                        transformOrigin: '0 0'
                       }}
                     >
                       {menu.menu}
@@ -121,54 +130,68 @@ const RouletteGame = ({ menus, onResult, onBack }) => {
             <button
               onClick={spin}
               disabled={isSpinning}
-              className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white px-12 py-6 rounded-full font-bold text-2xl shadow-2xl transition-all transform hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn btn-lg btn-primary text-2xl px-12 py-6"
             >
-              {isSpinning ? '돌리는 중...' : '🎲 룰렛 돌리기!'}
+              {isSpinning ? (
+                <>
+                  <span className="loading loading-spinner"></span>
+                  돌리는 중...
+                </>
+              ) : (
+                '🎲 룰렛 돌리기!'
+              )}
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
-            <div className="text-6xl mb-4">🎉</div>
-            <h2 className="text-4xl font-bold text-gray-800 mb-4">
-              {result.menu}
-            </h2>
-            <p className="text-gray-600 mb-6 text-lg">
-              {result.category} · {result.price_range}
-            </p>
-            <p className="text-gray-700 mb-8 leading-relaxed">
-              {result.reason}
-            </p>
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={spin}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-bold transition-all"
-              >
-                🔄 다시 돌리기
-              </button>
-              <button
-                onClick={() => onResult(result.menu)}
-                className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white px-6 py-3 rounded-lg font-bold transition-all"
-              >
-                ✓ 이 메뉴로 결정!
-              </button>
+          <div className="card bg-base-100 shadow-2xl">
+            <div className="card-body text-center">
+              <div className="text-6xl mb-4">🎉</div>
+              <h2 className="card-title text-4xl justify-center mb-4">
+                {result.menu}
+              </h2>
+              <div className="flex gap-2 justify-center mb-4">
+                <div className="badge badge-lg badge-outline">{result.category}</div>
+                <div className="badge badge-lg badge-primary">{result.price_range}</div>
+              </div>
+              <p className="text-base-content/80 mb-6 leading-relaxed">
+                {result.reason}
+              </p>
+              <div className="card-actions justify-center gap-4">
+                <button
+                  onClick={spin}
+                  className="btn btn-ghost"
+                >
+                  🔄 다시 돌리기
+                </button>
+                <button
+                  onClick={() => onResult(result.menu)}
+                  className="btn btn-success"
+                >
+                  ✓ 이 메뉴로 결정!
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* 메뉴 목록 */}
         {!result && (
-          <div className="mt-8 bg-white/20 backdrop-blur-sm rounded-xl p-6">
-            <h3 className="text-white font-bold text-lg mb-3">📋 후보 메뉴</h3>
-            <div className="grid grid-cols-3 gap-3">
-              {menus.map((menu, index) => (
-                <div
-                  key={index}
-                  className="bg-white/90 rounded-lg p-3 text-center"
-                >
-                  <p className="font-semibold text-gray-800">{menu.menu}</p>
-                  <p className="text-xs text-gray-500">{menu.category}</p>
-                </div>
-              ))}
+          <div className="card bg-base-100/20 backdrop-blur-sm shadow-xl mt-8">
+            <div className="card-body">
+              <h3 className="card-title text-base-100">📋 후보 메뉴</h3>
+              <div className="grid grid-cols-3 gap-3">
+                {menus.map((menu, index) => (
+                  <div
+                    key={index}
+                    className="card bg-base-100 shadow"
+                  >
+                    <div className="card-body p-3 text-center">
+                      <p className="font-semibold">{menu.menu}</p>
+                      <p className="text-xs opacity-70">{menu.category}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

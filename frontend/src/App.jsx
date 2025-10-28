@@ -131,11 +131,13 @@ function App() {
   // 로딩 화면
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-pink-600">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white mx-auto mb-4"></div>
-          <p className="text-white text-xl font-semibold">Gemini AI가 메뉴를 분석하고 있어요...</p>
-          <p className="text-white/80 text-sm mt-2">구내식당 메뉴를 기반으로 3가지 추천을 준비중입니다</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-secondary">
+        <div className="card bg-base-100 shadow-2xl p-8">
+          <div className="text-center">
+            <span className="loading loading-spinner loading-lg text-primary"></span>
+            <h2 className="text-2xl font-bold mt-4">Gemini AI가 메뉴를 분석중...</h2>
+            <p className="text-base-content/70 mt-2">구내식당 메뉴 기반으로 3가지 추천을 준비하고 있어요</p>
+          </div>
         </div>
       </div>
     );
@@ -144,53 +146,53 @@ function App() {
   // 위치 권한 요청 화면
   if (currentPage === 'location') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
-        <div className="text-center bg-white/10 backdrop-blur-lg rounded-3xl p-12 max-w-md">
-          <div className="text-7xl mb-6">📍</div>
-          <h1 className="text-4xl font-bold text-white mb-4">
-            위치 정보 접근
-          </h1>
-          
-          {locationPermission === 'pending' && (
-            <>
-              <p className="text-white text-lg mb-6">
-                날씨 정보와 주변 식당 검색을 위해<br/>
-                위치 정보가 필요합니다
-              </p>
-              <div className="animate-pulse">
-                <div className="h-2 bg-white/30 rounded-full overflow-hidden">
-                  <div className="h-full bg-white rounded-full w-1/2 animate-[slide_1s_ease-in-out_infinite]"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-secondary">
+        <div className="card bg-base-100 shadow-2xl max-w-md">
+          <div className="card-body items-center text-center">
+            <div className="text-7xl mb-4">📍</div>
+            <h2 className="card-title text-3xl">위치 정보 접근</h2>
+            
+            {locationPermission === 'pending' && (
+              <>
+                <p className="text-base-content/80 py-4">
+                  날씨 정보와 주변 식당 검색을 위해<br/>
+                  위치 정보가 필요합니다
+                </p>
+                <progress className="progress progress-primary w-56"></progress>
+              </>
+            )}
+            
+            {locationPermission === 'denied' && (
+              <>
+                <div className="alert alert-warning">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                  <span>위치 정보 접근이 거부되었습니다</span>
                 </div>
-              </div>
-            </>
-          )}
-          
-          {locationPermission === 'denied' && (
-            <>
-              <p className="text-white text-lg mb-4">
-                위치 정보 접근이 거부되었습니다
-              </p>
-              <p className="text-white/80 text-sm mb-6">
-                기본 위치(서울)로 진행합니다...
-              </p>
-              <div className="text-yellow-300 text-sm">
-                💡 브라우저 설정에서 위치 권한을 허용하면<br/>
-                더 정확한 주변 식당을 찾을 수 있습니다
-              </div>
-            </>
-          )}
+                <p className="text-base-content/70 mt-2">
+                  기본 위치(서울)로 진행합니다...
+                </p>
+                <div className="alert alert-info mt-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  <span className="text-sm">브라우저 설정에서 위치 권한을 허용하면 더 정확한 주변 식당을 찾을 수 있습니다</span>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500">
+    <div className="min-h-screen bg-base-200">
       {/* 에러 메시지 */}
       {error && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-          {error}
-          <button onClick={() => setError(null)} className="ml-4">✕</button>
+        <div className="toast toast-top toast-center z-50">
+          <div className="alert alert-error">
+            <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="btn btn-sm btn-ghost">✕</button>
+          </div>
         </div>
       )}
 

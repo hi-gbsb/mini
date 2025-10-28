@@ -34,11 +34,12 @@ export const recipeAPI = {
 };
 
 export const cafeteriaAPI = {
-  getRecommendation: async (location, cafeteriaMenu, userLocation = null) => {
+  getRecommendation: async (location, cafeteriaMenu, userLocation = null, preferExternal = true) => {
     const response = await api.post('/api/recommend-from-cafeteria', {
       location,
       cafeteria_menu: cafeteriaMenu,
-      user_location: userLocation
+      user_location: userLocation,
+      prefer_external: preferExternal  // CAM 모드 활성화
     });
     return response.data;
   },

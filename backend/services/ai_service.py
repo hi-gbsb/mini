@@ -12,46 +12,99 @@ class AIService:
         api_key = os.getenv("GEMINI_API_KEY", "AIzaSyBg5BiDftPSox4lsaI8kk4C62-qUPkk-58")
         if api_key:
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
             self.use_ai = True
-            print("✅ Gemini API 연결됨")
+            print("✅ Gemini API 연결됨 (고급 프롬프트 시스템)")
+            
+            # 시스템 인스트럭션 정의
+            self.system_instruction = self._get_system_instruction()
+            
+            # 모델 초기화 (시스템 인스트럭션 포함)
+            self.model = genai.GenerativeModel(
+                'gemini-2.0-flash-exp',
+                system_instruction=self.system_instruction
+            )
         else:
             self.model = None
             self.use_ai = False
             print("⚠️  Gemini API 키가 없습니다. 규칙 기반 추천 로직을 사용합니다.")
     
+    def _get_system_instruction(self) -> str:
+        """고급 시스템 인스트럭션 정의"""
+        return """
+당신은 "밥뭇나?! - 직장인 점심 추천 AI"입니다. 아래 규칙에 따라 메뉴를 추천합니다.
+
+## 핵심 규칙
+1. **입력 데이터**: 오늘자 구내식당 메뉴는 참고 자료입니다.
+2. **CAM 모드 (Cafeteria Avoidance Mode)**: 
+   - 사용자가 구내식당 회피 의사를 보이면 **외부식당 우선 모드(CAM)**를 발동합니다.
+   - CAM 발동 조건: prefer_external: true 또는 회피 키워드 감지
+3. **CAM 모드 원칙**: 
+   - 근처 외부 음식점(도보 0~15분) 추천을 최우선
+   - 각 카테고리 Top3 중 **최소 2개 이상**은 'nearby' (외부) 식당
+4. **거리 정책**: 도보 0~15분 범위 내만 추천
+   - near: 0~5분
+   - mid: 6~15분
+5. **스코어링 가중치**:
+   - **기본 모드**: taste 3 : nutrition 4 : practicality 3
+   - **CAM 모드**: taste 3 : nutrition 3 : practicality 4
+6. **예외(Wildcard)**는 CAM 여부 무관하게 외부 식당 위주로 구성
+7. **날씨 고려**: 현재 날씨에 맞는 메뉴 추천
+   - 더운 날씨: 시원한 메뉴, 냉면, 샐러드
+   - 추운 날씨: 따뜻한 국물 요리
+   - 비 오는 날: 실내 음식, 부침개, 전골
+
+## 추천 카테고리
+1. **상위호환(upgrade)**: 구내식당 메뉴의 고급/프리미엄 버전
+2. **비슷한 카테고리(alternative)**: 같은 계열이지만 다른 음식
+3. **예외(wildcard)**: 날씨 기반, 완전히 다른 종류의 음식
+
+## 출력 형식
+반드시 JSON 스키마를 준수하여 구조화된 데이터를 반환하세요.
+"""
+    
     async def recommend_from_cafeteria_menu(
         self,
         weather: Dict,
         cafeteria_menu: str,
-        location: Optional[Dict] = None
+        location: Optional[Dict] = None,
+        prefer_external: bool = True  # 기본적으로 외부식당 선호 (CAM 모드)
     ) -> Dict:
-        """구내식당 메뉴를 기반으로 3가지 외부 메뉴 추천"""
+        """고급 프롬프트 시스템으로 구내식당 메뉴 기반 추천"""
         
         # API 키가 없으면 규칙 기반 추천 사용
         if not self.use_ai:
             return self._get_fallback_cafeteria_recommendation(weather, cafeteria_menu)
         
         try:
-            prompt = f"""
-당신은 구내식당을 이용하는 직장인을 위한 메뉴 추천 전문가입니다.
+            # 사용자 입력 데이터 구조화
+            user_input = {
+                "prefer_external": prefer_external,  # CAM 모드 트리거
+                "today_cafeteria_menu": cafeteria_menu,
+                "current_weather": f"{weather.get('temperature', 20)}℃, {weather.get('sky_condition', '맑음')}",
+                "user_prefs": {
+                    "budget": 15000,  # 기본 예산
+                    "avoid": ["구내식당"] if prefer_external else [],
+                    "allergy": [],
+                    "favorite_flavor": self._get_flavor_from_weather(weather)
+                },
+                "location": weather.get('location', '서울'),
+                "nearby_options": self._generate_nearby_options(cafeteria_menu, weather)
+            }
+            
+            # 사용자 메시지 생성
+            user_message = f"""
+## 점심 메뉴 추천 요청 데이터
+아래 입력 데이터를 분석하여 최적의 점심 메뉴를 추천하고, 결과를 JSON 형식으로 반환하세요.
+---
+{json.dumps(user_input, ensure_ascii=False, indent=2)}
+---
 
-오늘 구내식당 메뉴: {cafeteria_menu}
-
-현재 날씨 정보:
-- 위치: {weather.get('location', '서울')}
-- 기온: {weather.get('temperature', 20)}°C
-- 날씨: {weather.get('sky_condition', '맑음')}
-- 강수: {weather.get('precipitation', '없음')}
-
-구내식당에서 먹기 싫은 날을 위해, 다음 3가지 카테고리로 외부 메뉴를 추천해주세요:
-
-1. **상위호환 메뉴**: 구내식당 메뉴의 고급 버전 또는 더 맛있는 버전
-2. **비슷한 카테고리**: 같은 계열이지만 다른 음식
-3. **날씨 기반 예외 메뉴**: 현재 날씨에 어울리지만 완전히 다른 종류의 음식
-
-반드시 아래 JSON 형식으로만 응답해주세요:
+**추천 형식**:
 {{
+    "mode": {{
+        "name": "CAM" 또는 "default",
+        "reason": "모드 선택 이유"
+    }},
     "cafeteria_menu": "{cafeteria_menu}",
     "recommendations": [
         {{
@@ -59,42 +112,58 @@ class AIService:
             "menu": "메뉴명",
             "category": "음식 카테고리",
             "reason": "추천 이유 (50자 이내)",
-            "price_range": "가격대 (예: 10,000-15,000원)"
+            "price_range": "가격대",
+            "distance": {{
+                "walking_min": 5,
+                "bucket": "near",
+                "policy_fit": true
+            }},
+            "score": {{
+                "taste": 8,
+                "nutrition": 7,
+                "practicality": 9,
+                "total": 8.0
+            }},
+            "meta": {{
+                "source": "nearby",
+                "priceLevel": "₩₩",
+                "openNow": true
+            }}
         }},
         {{
             "type": "비슷한카테고리",
-            "menu": "메뉴명",
-            "category": "음식 카테고리",
-            "reason": "추천 이유 (50자 이내)",
-            "price_range": "가격대"
+            "menu": "...",
+            ...
         }},
         {{
             "type": "날씨기반",
-            "menu": "메뉴명",
-            "category": "음식 카테고리",
-            "reason": "추천 이유 (50자 이내)",
-            "price_range": "가격대"
+            "menu": "...",
+            ...
         }}
     ],
-    "weather_summary": "날씨 요약 (30자 이내)"
+    "weather_summary": "날씨 요약"
 }}
 """
             
-            response = self.model.generate_content(prompt)
-            content = response.text
+            # Gemini API 호출
+            generation_config = genai.types.GenerationConfig(
+                response_mime_type="application/json",
+                temperature=0.8,
+            )
             
-            # JSON 추출 (마크다운 코드 블록 제거)
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0].strip()
+            response = self.model.generate_content(
+                user_message,
+                generation_config=generation_config
+            )
+            content = response.text
             
             # JSON 파싱
             try:
                 recommendation = json.loads(content)
+                print(f"✅ AI 추천 성공 (모드: {recommendation.get('mode', {}).get('name', 'default')})")
             except json.JSONDecodeError as e:
                 print(f"JSON 파싱 오류: {str(e)}")
-                print(f"응답 내용: {content}")
+                print(f"응답 내용: {content[:500]}...")
                 return self._get_fallback_cafeteria_recommendation(weather, cafeteria_menu)
             
             # 날씨 정보 추가
@@ -112,6 +181,55 @@ class AIService:
             import traceback
             traceback.print_exc()
             return self._get_fallback_cafeteria_recommendation(weather, cafeteria_menu)
+    
+    def _get_flavor_from_weather(self, weather: Dict) -> str:
+        """날씨 기반 선호 맛 추출"""
+        temp = weather.get('temperature', 20)
+        condition = weather.get('sky_condition', '맑음')
+        
+        if temp > 25:
+            return "시원함, 깔끔함, 상큼함"
+        elif temp < 10:
+            return "따뜻함, 든든함, 얼큰함"
+        elif '비' in condition or '눈' in condition:
+            return "따뜻함, 부드러움, 위로"
+        else:
+            return "균형잡힘, 신선함, 다양함"
+    
+    def _generate_nearby_options(self, cafeteria_menu: str, weather: Dict) -> List[Dict]:
+        """가상의 주변 식당 옵션 생성 (실제로는 카카오맵 API와 연동 가능)"""
+        temp = weather.get('temperature', 20)
+        
+        # 온도에 따른 기본 옵션
+        options = []
+        
+        if temp > 25:
+            options.extend([
+                {"name": "시원한 냉면가게", "category": "한식/면", "walking_min": 7, "priceLevel": "₩₩", "openNow": True, "details": "평양냉면, 비빔냉면"},
+                {"name": "프레시 샐러드 바", "category": "샐러드/서양식", "walking_min": 4, "priceLevel": "₩₩", "openNow": True, "details": "닭가슴살 샐러드, 저칼로리"},
+            ])
+        elif temp < 10:
+            options.extend([
+                {"name": "얼큰 김치찌개집", "category": "한식/찌개", "walking_min": 5, "priceLevel": "₩", "openNow": True, "details": "김치찌개, 순두부찌개"},
+                {"name": "사골국밥 전문점", "category": "한식/국밥", "walking_min": 8, "priceLevel": "₩₩", "openNow": True, "details": "진한 사골국밥"},
+            ])
+        else:
+            options.extend([
+                {"name": "프리미엄 한식당", "category": "한식/정식", "walking_min": 10, "priceLevel": "₩₩₩", "openNow": True, "details": "계절 반찬 정식"},
+                {"name": "맛있는 일식집", "category": "일식/초밥", "walking_min": 6, "priceLevel": "₩₩", "openNow": True, "details": "런치 초밥 세트"},
+            ])
+        
+        # 구내식당 대안 (항상 포함)
+        options.append({
+            "name": "구내식당 대체 메뉴", 
+            "category": "사내", 
+            "walking_min": 0, 
+            "priceLevel": "₩", 
+            "openNow": True, 
+            "details": f"{cafeteria_menu}의 대안"
+        })
+        
+        return options
     
     def _build_prompt(self, weather: Dict, preferences: Optional[Dict]) -> str:
         """프롬프트 생성"""

@@ -203,39 +203,41 @@ const RestaurantPage = ({ menuName, location, onBack }) => {
   };
 
   return (
-    <div className="min-h-screen px-4 py-8">
+    <div className="min-h-screen bg-base-200 px-4 py-8">
       <div className="max-w-6xl mx-auto">
         <button
           onClick={onBack}
-          className="mb-4 text-white hover:text-gray-200 flex items-center bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm"
+          className="btn btn-ghost mb-4"
         >
-          <span className="mr-2">←</span> 뒤로가기
+          ← 뒤로가기
         </button>
 
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="card bg-base-100 shadow-2xl">
           {/* 헤더 */}
-          <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6">
-            <h2 className="text-3xl font-bold mb-2">🗺️ {menuName} 맛집 찾기</h2>
-            <p className="text-white/90">주변의 {menuName} 음식점을 찾아보세요</p>
+          <div className="card-body bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-t-2xl">
+            <h2 className="card-title text-3xl mb-2">🗺️ {menuName} 맛집 찾기</h2>
+            <p className="opacity-90">주변의 {menuName} 음식점을 찾아보세요</p>
           </div>
 
           {/* 지도 */}
           <div className="relative">
             {error ? (
-              <div className="h-96 flex items-center justify-center bg-gray-100">
-                <div className="text-center">
-                  <p className="text-gray-600 mb-4">{error}</p>
-                  <p className="text-sm text-gray-500">
-                    카카오맵 API 키가 필요합니다.<br/>
-                    설정 후 다시 시도해주세요.
-                  </p>
+              <div className="h-96 flex items-center justify-center bg-base-200">
+                <div className="text-center p-8">
+                  <div className="alert alert-error max-w-md mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div>
+                      <p className="font-bold">{error}</p>
+                      <p className="text-sm">카카오맵 API 키를 확인해주세요</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : !isMapLoaded ? (
-              <div className="h-96 flex items-center justify-center bg-gray-100">
+              <div className="h-96 flex items-center justify-center bg-base-200">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-                  <p className="text-gray-600">지도를 불러오는 중...</p>
+                  <span className="loading loading-spinner loading-lg text-primary"></span>
+                  <p className="mt-4">지도를 불러오는 중...</p>
                 </div>
               </div>
             ) : (
@@ -244,25 +246,23 @@ const RestaurantPage = ({ menuName, location, onBack }) => {
           </div>
 
           {/* 안내 메시지 */}
-          <div className="p-6 bg-gray-50">
-            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-              <p className="text-sm text-gray-700">
-                <span className="font-semibold">📍 현재 위치 기반:</span> 주변 2km 반경 내 음식점을 표시합니다.
-              </p>
+          <div className="card-body bg-base-200">
+            <div className="alert alert-info">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <span><strong>📍 현재 위치 기반:</strong> 주변 2km 반경 내 음식점을 표시합니다.</span>
             </div>
             
-            <div className="mt-4 bg-green-50 border-l-4 border-green-400 p-4 rounded">
-              <p className="text-sm text-gray-700">
-                <span className="font-semibold">💡 Tip:</span> 마커를 클릭하면 상세 정보(주소, 전화번호)를 확인할 수 있습니다.
-              </p>
+            <div className="alert alert-success mt-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <span><strong>💡 Tip:</strong> 마커를 클릭하면 상세 정보(주소, 전화번호)를 확인할 수 있습니다.</span>
             </div>
           </div>
 
           {/* 다시 검색 버튼 */}
-          <div className="p-6">
+          <div className="card-body">
             <button
               onClick={onBack}
-              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-lg font-bold text-xl hover:from-purple-600 hover:to-pink-600 transition-all transform hover:scale-105 shadow-lg"
+              className="btn btn-primary btn-lg w-full"
             >
               다른 메뉴 추천받기 🔄
             </button>

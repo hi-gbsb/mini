@@ -37,6 +37,7 @@ class CafeteriaMenuRequest(BaseModel):
     location: str = "서울"
     cafeteria_menu: str  # 구내식당 메뉴 (텍스트)
     user_location: Optional[Dict] = None  # 위도, 경도
+    prefer_external: bool = True  # 외부식당 선호 (CAM 모드)
 
 class RecipeRequest(BaseModel):
     menu_name: str
@@ -92,16 +93,17 @@ async def recommend_menu(request: RecommendRequest):
 
 @app.post("/api/recommend-from-cafeteria")
 async def recommend_from_cafeteria(request: CafeteriaMenuRequest):
-    """구내식당 메뉴 기반 외부 메뉴 추천"""
+    """구내식당 메뉴 기반 외부 메뉴 추천 (고급 프롬프트 시스템 + CAM 모드)"""
     try:
         # 1. 날씨 정보 가져오기
         weather_data = await weather_service.get_weather(request.location)
         
-        # 2. 구내식당 메뉴 기반 추천
+        # 2. 구내식당 메뉴 기반 추천 (CAM 모드 지원)
         recommendation = await ai_service.recommend_from_cafeteria_menu(
             weather_data,
             request.cafeteria_menu,
-            request.user_location
+            request.user_location,
+            request.prefer_external  # CAM 모드 전달
         )
         
         return {
