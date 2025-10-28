@@ -28,7 +28,7 @@
 ## 🚀 기술 스택
 
 ### 백엔드
-- Python 3.11
+- Python 3.12
 - FastAPI
 - **Google Gemini 2.0 Flash API** (무료 사용 가능)
 - 기상청 공공데이터 API
