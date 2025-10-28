@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const CafeteriaResult = ({ recommendation, onSelectMenu, onShowRoulette, onBack }) => {
+const CafeteriaResult = ({ recommendation, weather, location, onSelectMenu, onShowRoulette, onBack }) => {
   const [selectedMenu, setSelectedMenu] = useState(null);
 
   if (!recommendation || !recommendation.recommendations) {
@@ -46,25 +46,27 @@ const CafeteriaResult = ({ recommendation, onSelectMenu, onShowRoulette, onBack 
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary to-secondary py-8 px-4">
+    <div className="min-h-screen py-8 px-4">
       {/* 상단 날씨 정보 */}
-      {weather_info && (
-        <div className="absolute top-4 right-4">
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body p-4">
-              <div className="flex items-center gap-3">
-                <div className="text-4xl">
-                  {weather_info.condition === '맑음' ? '☀️' : 
-                   weather_info.condition === '구름많음' ? '⛅' : 
-                   weather_info.condition === '흐림' ? '☁️' : '🌤️'}
-                </div>
-                <div>
-                  <p className="text-sm opacity-70">{weather_info.location}</p>
-                  <p className="text-2xl font-bold">{weather_info.temperature}°C</p>
-                  <p className="text-xs opacity-60">{weather_summary}</p>
-                </div>
-              </div>
+      {weather && (
+        <div className="absolute top-4 right-4 glass rounded-xl shadow-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-yellow-300/80 flex items-center justify-center">
+              <span className="text-xl">
+                {weather.sky_condition === '맑음' ? '☀️' : 
+                 weather.sky_condition === '구름많음' ? '⛅' : 
+                 weather.sky_condition === '흐림' ? '☁️' : 
+                 weather.sky_condition === '비' ? '🌧️' : 
+                 weather.sky_condition === '눈' ? '❄️' : '🌤️'}
+              </span>
             </div>
+            <div>
+              <div className="text-[13px] text-slate-500">현재 위치</div>
+              <div className="font-semibold">{location || weather.location}</div>
+            </div>
+          </div>
+          <div className="chip rounded-xl px-3 py-1.5 text-sm font-medium text-slate-700 mt-2">
+            {weather.temperature}°C
           </div>
         </div>
       )}
@@ -74,17 +76,18 @@ const CafeteriaResult = ({ recommendation, onSelectMenu, onShowRoulette, onBack 
         <div className="text-center mb-8">
           <button
             onClick={onBack}
-            className="btn btn-ghost absolute top-4 left-4"
+            className="glass rounded-xl px-4 py-2 absolute top-4 left-4 hover:bg-white/90"
           >
             ← 뒤로가기
           </button>
           
-          <h1 className="text-6xl font-bold text-base-100 mb-4 drop-shadow-lg">
-            🎯 밥뭇나?! 추천
-          </h1>
-          
-          <div className="badge badge-lg badge-neutral p-6 text-lg">
-            <span className="font-semibold mr-2">오늘 구내식당 메뉴:</span> {cafeteria_menu}
+          <div className="glass rounded-3xl p-6 shadow-2xl inline-block">
+            <h1 className="text-4xl md:text-5xl font-bold text-slate-800 mb-3">
+              🎯 AI 메뉴 추천
+            </h1>
+            <div className="chip rounded-xl px-4 py-2 text-sm">
+              <span className="font-semibold mr-2">오늘 구내식당:</span> {cafeteria_menu}
+            </div>
           </div>
         </div>
 
@@ -94,8 +97,8 @@ const CafeteriaResult = ({ recommendation, onSelectMenu, onShowRoulette, onBack 
             <div
               key={index}
               onClick={() => handleMenuClick(item)}
-              className={`card bg-base-100 shadow-2xl cursor-pointer transition-all transform hover:scale-105 ${
-                selectedMenu?.menu === item.menu ? 'ring-4 ring-accent' : ''
+              className={`glass rounded-2xl shadow-2xl cursor-pointer transition-all transform hover:scale-105 overflow-hidden ${
+                selectedMenu?.menu === item.menu ? 'ring-4 ring-indigo-500' : ''
               }`}
             >
               {/* 카드 헤더 */}
@@ -144,7 +147,7 @@ const CafeteriaResult = ({ recommendation, onSelectMenu, onShowRoulette, onBack 
         <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
           <button
             onClick={onShowRoulette}
-            className="btn btn-lg btn-outline btn-accent"
+            className="glass rounded-xl px-6 py-3 text-[15px] font-semibold hover:bg-white/90"
           >
             🎰 룰렛으로 결정하기
           </button>
@@ -152,7 +155,7 @@ const CafeteriaResult = ({ recommendation, onSelectMenu, onShowRoulette, onBack 
           <button
             onClick={handleConfirm}
             disabled={!selectedMenu}
-            className="btn btn-lg btn-primary"
+            className="btn-primary rounded-xl px-6 py-3 text-[15px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {selectedMenu ? `${selectedMenu.display_name || selectedMenu.menu} 주변 식당 찾기 🔍` : '메뉴를 선택해주세요'}
           </button>

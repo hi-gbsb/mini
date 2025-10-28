@@ -1,186 +1,199 @@
 import React, { useState } from 'react';
 
 const CafeteriaInput = ({ onSubmit, weather, location }) => {
-  const [inputMethod, setInputMethod] = useState(null); // 'text' or 'image'
   const [menuText, setMenuText] = useState('');
-  const [menuImage, setMenuImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+  const [menuList, setMenuList] = useState([]);
+  const [imageFile, setImageFile] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setMenuImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+  // 메뉴 파싱
+  const parseMenus = (raw) => {
+    return Array.from(new Set(String(raw || '').split(/[\n,;|]/).map(s => s.trim()).filter(Boolean)));
   };
 
-  const handleSubmit = () => {
-    if (inputMethod === 'text' && menuText.trim()) {
+  // 텍스트 입력 변경
+  const handleTextChange = (e) => {
+    const text = e.target.value;
+    setMenuText(text);
+    setMenuList(parseMenus(text));
+  };
+
+  // 목록 비우기
+  const handleClearList = () => {
+    setMenuText('');
+    setMenuList([]);
+  };
+
+  // 드롭존 이벤트
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    handleFile(file);
+  };
+
+  const handleFileInput = (e) => {
+    const file = e.target.files[0];
+    handleFile(file);
+  };
+
+  const handleFile = (file) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('파일 최대 크기는 5MB입니다.');
+      return;
+    }
+    setImageFile(file);
+    // 파일명에서 메뉴 추출 시도
+    const name = file.name.replace(/\.[^.]+$/, '');
+    const guess = name.replace(/[_.-]+/g, ', ');
+    const merged = [...new Set([...parseMenus(menuText), ...parseMenus(guess)])];
+    setMenuText(merged.join(', '));
+    setMenuList(merged);
+  };
+
+  // 제출
+  const handleRecommend = () => {
+    if (menuText.trim()) {
       onSubmit({ method: 'text', content: menuText });
-    } else if (inputMethod === 'image' && menuImage) {
-      // 이미지의 경우 OCR이 필요하지만, 현재는 텍스트로 입력받도록 안내
-      alert('이미지 업로드 기능은 개발 중입니다. 텍스트로 입력해주세요.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary to-secondary">
+    <div className="min-h-screen">
       {/* 상단 날씨 정보 */}
       {weather && (
-        <div className="absolute top-4 right-4">
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body p-4">
-              <div className="flex items-center gap-3">
-                <div className="text-4xl">
-                  {weather.sky_condition === '맑음' ? '☀️' : 
-                   weather.sky_condition === '구름많음' ? '⛅' : 
-                   weather.sky_condition === '흐림' ? '☁️' : '🌤️'}
-                </div>
-                <div>
-                  <p className="text-sm opacity-70">{location || weather.location}</p>
-                  <p className="text-2xl font-bold">{weather.temperature}°C</p>
-                  <p className="text-xs opacity-60">{weather.sky_condition}</p>
-                </div>
-              </div>
+        <div className="absolute top-4 right-4 glass rounded-xl shadow-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-yellow-300/80 flex items-center justify-center">
+              <span className="text-xl">
+                {weather.sky_condition === '맑음' ? '☀️' : 
+                 weather.sky_condition === '구름많음' ? '⛅' : 
+                 weather.sky_condition === '흐림' ? '☁️' : '🌤️'}
+              </span>
             </div>
+            <div>
+              <div className="text-[13px] text-slate-500">현재 위치</div>
+              <div className="font-semibold">{location || weather.location}</div>
+            </div>
+          </div>
+          <div className="chip rounded-xl px-3 py-1.5 text-sm font-medium text-slate-700 mt-2">
+            {weather.temperature}°C
           </div>
         </div>
       )}
 
       {/* 메인 컨텐츠 */}
-      <div className="flex-1 flex items-center justify-center px-4 py-20">
-        <div className="max-w-2xl w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-6xl font-bold text-base-100 mb-4 drop-shadow-lg">
-              🍱 밥뭇나?!
-            </h1>
-            <p className="text-base-100 text-xl mb-2 drop-shadow">
-              오늘 구내식당 메뉴를 알려주세요
-            </p>
-            <p className="text-base-100/90 text-sm drop-shadow">
-              구내식당에서 먹기 싫은 날을 위해 맛있는 외부 메뉴를 추천해드려요!
-            </p>
+      <div className="mx-auto max-w-5xl px-4 py-10">
+        <div className="glass rounded-3xl p-6 md:p-8 shadow-2xl">
+          <div className="flex items-center justify-between gap-4 border-b border-black/5 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-fuchsia-500 to-amber-400 flex items-center justify-center">
+                <span className="text-xl">🍱</span>
+              </div>
+              <div>
+                <h2 className="text-xl md:text-2xl font-extrabold text-slate-800">오늘의 구내식당 메뉴를 입력해주세요</h2>
+              </div>
+            </div>
           </div>
 
-          {/* 입력 방법 선택 */}
-          {!inputMethod && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <button
-                onClick={() => setInputMethod('text')}
-                className="card bg-base-100 hover:bg-base-200 shadow-2xl transition-all transform hover:scale-105 hover:shadow-primary/50"
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">🍱 식단표 이미지 업로드</label>
+              <div
+                id="dropzone"
+                className={`dropzone rounded-2xl bg-white p-6 text-center cursor-pointer ${dragOver ? 'dragover' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => document.getElementById('file-input').click()}
               >
-                <div className="card-body items-center text-center">
-                  <div className="text-6xl mb-4">📝</div>
-                  <h2 className="card-title text-2xl">텍스트 입력</h2>
-                  <p className="text-base-content/70">메뉴를 직접 입력하기</p>
+                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#64748b" className="h-8 w-8">
+                    <path d="M12 3a7 7 0 0 0-7 7v3H3l4 4 4-4H8v-3a4 4 0 1 1 8 0v1h2v-1a7 7 0 0 0-7-7Z"/>
+                    <path d="M17 14h-2v6h2v-6Zm-4 3h-2v3h2v-3Zm-4-2H7v5h2v-5Z"/>
+                  </svg>
                 </div>
-              </button>
-
-              <button
-                onClick={() => setInputMethod('image')}
-                className="card bg-base-100 hover:bg-base-200 shadow-2xl transition-all transform hover:scale-105 hover:shadow-secondary/50"
-              >
-                <div className="card-body items-center text-center">
-                  <div className="text-6xl mb-4">📸</div>
-                  <h2 className="card-title text-2xl">이미지 업로드</h2>
-                  <p className="text-base-content/70">식단표 사진 올리기</p>
-                </div>
-              </button>
-            </div>
-          )}
-
-          {/* 텍스트 입력 */}
-          {inputMethod === 'text' && (
-            <div className="card bg-base-100 shadow-2xl">
-              <div className="card-body">
-                <button
-                  onClick={() => setInputMethod(null)}
-                  className="btn btn-ghost btn-sm self-start"
-                >
-                  ← 다시 선택
-                </button>
-                <h3 className="card-title text-2xl">오늘의 구내식당 메뉴</h3>
-                <textarea
-                  value={menuText}
-                  onChange={(e) => setMenuText(e.target.value)}
-                  placeholder="예: 제육볶음, 된장찌개, 비빔밥, 파스타..."
-                  className="textarea textarea-bordered textarea-lg h-40 text-lg"
+                <p className="text-sm text-slate-600">
+                  클릭하거나 이미지를 드래그하세요<br/>
+                  <span className="text-slate-400">JPG, PNG 파일 (최대 5MB)</span>
+                </p>
+                {imageFile && (
+                  <p className="mt-2 text-xs text-green-600">✓ {imageFile.name}</p>
+                )}
+                <input
+                  id="file-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileInput}
                 />
-                <div className="card-actions justify-end mt-4">
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!menuText.trim()}
-                    className="btn btn-primary btn-lg w-full"
-                  >
-                    메뉴 추천받기 🎯
-                  </button>
-                </div>
               </div>
-            </div>
-          )}
 
-          {/* 이미지 업로드 */}
-          {inputMethod === 'image' && (
-            <div className="card bg-base-100 shadow-2xl">
-              <div className="card-body">
-                <button
-                  onClick={() => setInputMethod(null)}
-                  className="btn btn-ghost btn-sm self-start"
-                >
-                  ← 다시 선택
-                </button>
-                <h3 className="card-title text-2xl">식단표 사진 업로드</h3>
-                
-                <div className="border-4 border-dashed border-base-300 rounded-lg p-8 text-center hover:border-primary transition-colors">
-                  {imagePreview ? (
-                    <div>
-                      <img src={imagePreview} alt="식단표" className="max-h-64 mx-auto mb-4 rounded-lg" />
-                      <button
-                        onClick={() => {
-                          setMenuImage(null);
-                          setImagePreview(null);
-                        }}
-                        className="btn btn-error btn-sm"
-                      >
-                        다시 선택
-                      </button>
-                    </div>
+              <div className="relative my-6 text-center text-slate-500">
+                <span className="relative z-10 bg-white/70 px-3 py-0.5 text-xs font-medium rounded-full">또는</span>
+                <div className="absolute left-0 right-0 top-1/2 -z-0 h-px -translate-y-1/2 bg-slate-200"></div>
+              </div>
+
+              <label className="mb-2 block text-sm font-semibold text-slate-700">✏️ 금일 메뉴 텍스트 입력</label>
+              <textarea
+                value={menuText}
+                onChange={handleTextChange}
+                className="h-36 w-full resize-none rounded-2xl border border-slate-200 bg-white/90 p-4 text-[15px] shadow-inner outline-none focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-200"
+                placeholder="예: 김치찌개, 된장찌개, 불고기 덮밥"
+              />
+              <p className="mt-2 text-xs text-slate-400">
+                쉼표(,), 세미콜론(;), 파이프(|), 줄바꿈으로 구분해 입력하면 오른쪽 목록이 자동 정리됩니다.
+              </p>
+            </div>
+
+            <aside className="md:col-span-1">
+              <div className="rounded-2xl border border-black/5 bg-white/90 p-4 shadow">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="font-bold text-slate-700">메뉴 목록</h3>
+                  <span className="chip rounded-lg px-2 py-0.5 text-xs text-slate-700">
+                    {menuList.length}개
+                  </span>
+                </div>
+                <ul className="max-h-64 overflow-auto space-y-1.5 text-sm text-slate-700">
+                  {menuList.length === 0 ? (
+                    <li className="text-slate-400">여기에 메뉴가 표시됩니다.</li>
                   ) : (
-                    <label className="cursor-pointer">
-                      <div className="text-6xl mb-4">📤</div>
-                      <p className="text-base-content mb-2">클릭하여 이미지 업로드</p>
-                      <p className="text-sm text-base-content/60">JPG, PNG 파일 지원</p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                    </label>
+                    menuList.map((menu, index) => (
+                      <li key={index} className="rounded-lg bg-slate-50 px-3 py-2">
+                        {menu}
+                      </li>
+                    ))
                   )}
-                </div>
-
-                <div className="alert alert-warning mt-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  <span className="text-sm"><strong>안내:</strong> 현재 이미지 OCR 기능은 개발 중입니다. 텍스트 입력을 이용해주세요.</span>
-                </div>
-
-                <div className="card-actions justify-end mt-4">
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!menuImage}
-                    className="btn btn-secondary btn-lg w-full"
-                  >
-                    메뉴 추천받기 🎯
-                  </button>
-                </div>
+                </ul>
+                <button
+                  onClick={handleClearList}
+                  className="mt-4 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  목록 비우기
+                </button>
               </div>
-            </div>
-          )}
+            </aside>
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={handleRecommend}
+              disabled={!menuText.trim()}
+              className="btn-primary inline-flex items-center gap-2 rounded-xl px-6 py-3 text-[15px] font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span>메뉴 추천받기</span> <span>🎯</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -188,4 +201,3 @@ const CafeteriaInput = ({ onSubmit, weather, location }) => {
 };
 
 export default CafeteriaInput;
-

@@ -6,7 +6,7 @@ import RestaurantPage from './components/RestaurantPage';
 import { weatherAPI, cafeteriaAPI } from './services/api';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('location'); // location, input, result, roulette, restaurant
+  const [currentPage, setCurrentPage] = useState('landing'); // landing, location, input, result, roulette, restaurant
   const [location, setLocation] = useState('서울');
   const [userCoords, setUserCoords] = useState(null);
   const [weather, setWeather] = useState(null);
@@ -16,18 +16,87 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [locationPermission, setLocationPermission] = useState('pending'); // pending, granted, denied
+  const [backgroundPhoto, setBackgroundPhoto] = useState(null);
 
-  // 위치 정보 요청
+  // 초기 테마 설정
   useEffect(() => {
-    if (currentPage === 'location') {
-      requestLocation();
+    setTheme('default');
+  }, []);
+
+  // 날씨 테마 적용
+  useEffect(() => {
+    if (weather) {
+      const theme = chooseThemeFromWeather(weather.sky_condition, weather.temperature);
+      console.log('🎨 날씨 테마 적용:', theme, weather);
+      setTheme(theme);
+      
+      // 배경 사진 가져오기
+      fetchBackgroundPhoto(weather.sky_condition, weather.temperature);
     }
-  }, [currentPage]);
+  }, [weather]);
+
+  const chooseThemeFromWeather = (condition = '', temp = null) => {
+    const c = (condition || '').toLowerCase();
+    if (c.includes('맑')) return 'clear';
+    if (c.includes('구름')) return 'clouds';
+    if (c.includes('비')) return 'rain';
+    if (c.includes('눈')) return 'snow';
+    if (c.includes('흐림')) return 'cloudy';
+    if (typeof temp === 'number') {
+      if (temp >= 28) return 'hot';
+      if (temp <= 3) return 'cold';
+    }
+    return 'default';
+  };
+
+  const setTheme = (theme = 'default') => {
+    const themes = ['default', 'clear', 'clouds', 'cloudy', 'rain', 'snow', 'hot', 'cold'];
+    themes.forEach(t => document.body.classList.remove(`theme-${t}`));
+    document.body.classList.add(`theme-${theme}`);
+    document.body.classList.add('app-bg');
+    console.log('✅ 테마 적용 완료:', theme);
+  };
+
+  const fetchBackgroundPhoto = async (weatherCondition, temperature) => {
+    try {
+      console.log('📸 배경 사진 요청:', weatherCondition, temperature);
+      const response = await fetch(
+        `http://localhost:8000/api/weather-photo?weather_condition=${encodeURIComponent(weatherCondition)}&temperature=${temperature || ''}`
+      );
+      const data = await response.json();
+      
+      if (data.success && data.data.success && data.data.photo_url) {
+        console.log('✅ 배경 사진 가져오기 성공');
+        setBackgroundPhoto(data.data.photo_url);
+        document.body.style.backgroundImage = `url(${data.data.photo_url})`;
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center';
+        document.body.style.backgroundRepeat = 'no-repeat';
+        document.body.style.backgroundAttachment = 'fixed';
+      } else {
+        console.log('⚠️ 배경 사진 없음, 테마 그라데이션 사용');
+        document.body.style.backgroundImage = 'none';
+      }
+    } catch (error) {
+      console.error('❌ 배경 사진 가져오기 실패:', error);
+      document.body.style.backgroundImage = 'none';
+    }
+  };
+
+  // 시작하기 버튼 클릭
+  const handleStart = async () => {
+    setCurrentPage('location');
+    
+    // 위치 권한 요청 전에 먼저 기본 위치로 날씨 로드
+    await fetchWeather('서울');
+    
+    requestLocation();
+  };
 
   const requestLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const coords = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
@@ -35,24 +104,17 @@ function App() {
           setUserCoords(coords);
           setLocationPermission('granted');
           
-          // 위치 기반으로 지역명 설정 (간단하게 서울로 설정, 실제로는 역지오코딩 필요)
           setLocation('서울');
-          
-          // 날씨 정보 가져오기
-          fetchWeather('서울');
-          
-          // 입력 페이지로 이동
+          await fetchWeather('서울');
           setCurrentPage('input');
         },
-        (error) => {
+        async (error) => {
           console.warn('위치 정보 접근 거부:', error);
           setLocationPermission('denied');
           
-          // 위치 권한이 없어도 기본 위치로 진행
           setLocation('서울');
-          fetchWeather('서울');
+          await fetchWeather('서울');
           
-          // 3초 후 자동으로 입력 페이지로 이동
           setTimeout(() => {
             setCurrentPage('input');
           }, 3000);
@@ -76,7 +138,15 @@ function App() {
   const fetchWeather = async (loc) => {
     try {
       const response = await weatherAPI.getWeather(loc);
+      console.log('날씨 API 응답:', response.data);
       setWeather(response.data);
+      
+      if (response.data) {
+        const theme = chooseThemeFromWeather(response.data.sky_condition, response.data.temperature);
+        console.log('테마 즉시 적용:', theme, response.data);
+        setTheme(theme);
+        await fetchBackgroundPhoto(response.data.sky_condition, response.data.temperature);
+      }
     } catch (err) {
       console.error('날씨 정보 가져오기 실패:', err);
     }
@@ -128,16 +198,47 @@ function App() {
     setCurrentPage('result');
   };
 
+  // Landing 화면
+  if (currentPage === 'landing') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="glass rounded-3xl p-10 md:p-14 shadow-2xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-amber-400 shadow-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="h-9 w-9">
+                <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"/>
+              </svg>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-800">🍱 밥뭇나?!</h1>
+            <p className="mt-3 text-slate-600">
+              구내식당 메뉴 기반 AI 점심 추천 서비스<br className="hidden sm:block"/>
+              날씨에 따라 최적의 메뉴를 추천해드립니다
+            </p>
+            <button 
+              onClick={handleStart}
+              className="btn-primary mt-8 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-[15px] font-semibold shadow-lg"
+            >
+              <span>시작하기</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 로딩 화면
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-secondary">
-        <div className="card bg-base-100 shadow-2xl p-8">
-          <div className="text-center">
-            <span className="loading loading-spinner loading-lg text-primary"></span>
-            <h2 className="text-2xl font-bold mt-4">Gemini AI가 메뉴를 분석중...</h2>
-            <p className="text-base-content/70 mt-2">구내식당 메뉴 기반으로 3가지 추천을 준비하고 있어요</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="glass rounded-3xl p-10 md:p-14 shadow-2xl text-center max-w-md">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-indigo-500">
+            <svg className="spinner h-8 w-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" opacity=".2"></circle>
+              <path d="M12 2a10 10 0 0 1 10 10"></path>
+            </svg>
           </div>
+          <p className="text-lg font-semibold text-slate-800">Gemini AI가 메뉴를 추천하고 있어요…</p>
+          <p className="mt-2 text-slate-500">입력한 메뉴와 날씨를 반영하여 3가지 메뉴를 구성합니다</p>
         </div>
       </div>
     );
@@ -146,53 +247,53 @@ function App() {
   // 위치 권한 요청 화면
   if (currentPage === 'location') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-secondary">
-        <div className="card bg-base-100 shadow-2xl max-w-md">
-          <div className="card-body items-center text-center">
-            <div className="text-7xl mb-4">📍</div>
-            <h2 className="card-title text-3xl">위치 정보 접근</h2>
-            
-            {locationPermission === 'pending' && (
-              <>
-                <p className="text-base-content/80 py-4">
-                  날씨 정보와 주변 식당 검색을 위해<br/>
-                  위치 정보가 필요합니다
-                </p>
-                <progress className="progress progress-primary w-56"></progress>
-              </>
-            )}
-            
-            {locationPermission === 'denied' && (
-              <>
-                <div className="alert alert-warning">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  <span>위치 정보 접근이 거부되었습니다</span>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="glass rounded-3xl p-10 md:p-14 shadow-2xl text-center max-w-md">
+          <div className="text-7xl mb-6">📍</div>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-800 mb-3">
+            위치 정보 접근
+          </h1>
+          
+          {locationPermission === 'pending' && (
+            <>
+              <p className="text-slate-600 mb-6">
+                날씨 정보와 주변 식당 검색을 위해<br/>
+                위치 정보가 필요합니다
+              </p>
+              <div className="animate-pulse">
+                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-indigo-500 rounded-full w-1/2"></div>
                 </div>
-                <p className="text-base-content/70 mt-2">
-                  기본 위치(서울)로 진행합니다...
-                </p>
-                <div className="alert alert-info mt-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                  <span className="text-sm">브라우저 설정에서 위치 권한을 허용하면 더 정확한 주변 식당을 찾을 수 있습니다</span>
-                </div>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
+          
+          {locationPermission === 'denied' && (
+            <>
+              <p className="text-slate-600 mb-4">
+                위치 정보 접근이 거부되었습니다
+              </p>
+              <p className="text-slate-500 text-sm mb-6">
+                기본 위치(서울)로 진행합니다...
+              </p>
+              <div className="text-amber-700 text-sm bg-amber-50 rounded-lg p-3">
+                💡 브라우저 설정에서 위치 권한을 허용하면<br/>
+                더 정확한 주변 식당을 찾을 수 있습니다
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-base-200">
+    <div className="min-h-screen">
       {/* 에러 메시지 */}
       {error && (
-        <div className="toast toast-top toast-center z-50">
-          <div className="alert alert-error">
-            <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="btn btn-sm btn-ghost">✕</button>
-          </div>
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 glass border border-red-200 text-red-800 px-6 py-3 rounded-lg shadow-lg z-50">
+          {error}
+          <button onClick={() => setError(null)} className="ml-4">✕</button>
         </div>
       )}
 
@@ -208,6 +309,8 @@ function App() {
       {currentPage === 'result' && (
         <CafeteriaResult
           recommendation={recommendation}
+          weather={weather}
+          location={location}
           onSelectMenu={handleSelectMenu}
           onShowRoulette={handleShowRoulette}
           onBack={handleBack}
@@ -217,6 +320,8 @@ function App() {
       {currentPage === 'roulette' && recommendation && (
         <RouletteGame
           menus={recommendation.recommendations}
+          weather={weather}
+          location={location}
           onResult={handleRouletteResult}
           onBack={handleBackToResult}
         />
@@ -225,6 +330,7 @@ function App() {
       {currentPage === 'restaurant' && (
         <RestaurantPage
           menuName={selectedMenu}
+          weather={weather}
           location={location}
           onBack={handleBack}
         />
@@ -234,4 +340,3 @@ function App() {
 }
 
 export default App;
-

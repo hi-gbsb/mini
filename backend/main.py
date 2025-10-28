@@ -25,6 +25,14 @@ app.add_middleware(
 weather_service = WeatherService()
 ai_service = AIService()
 
+# Unsplash 서비스 (날씨별 배경 사진)
+try:
+    from services.unsplash_service import UnsplashService
+    unsplash_service = UnsplashService()
+except Exception as e:
+    print(f"⚠️ Unsplash 서비스 로드 실패: {e}")
+    unsplash_service = None
+
 # Request 모델
 class RecommendRequest(BaseModel):
     location: str = "서울"
@@ -122,6 +130,31 @@ async def get_recipe(request: RecipeRequest):
             "success": True,
             "data": recipe
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/weather-photo")
+async def get_weather_photo(weather_condition: str, temperature: Optional[float] = None):
+    """날씨 조건에 맞는 배경 사진 가져오기"""
+    try:
+        if unsplash_service:
+            photo_data = await unsplash_service.get_weather_photo(weather_condition, temperature)
+            return {
+                "success": True,
+                "data": photo_data
+            }
+        else:
+            # Unsplash 서비스 없으면 기본 그라데이션 반환
+            fallback = {
+                "success": False,
+                "fallback": True,
+                "background": "linear-gradient(140deg, #4facfe 0%, #00f2fe 50%, #00d4ff 100%)",
+                "weather_condition": weather_condition
+            }
+            return {
+                "success": True,
+                "data": fallback
+            }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

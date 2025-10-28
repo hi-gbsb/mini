@@ -15,12 +15,14 @@
 ### 백엔드
 - Python 3.12 + FastAPI
 - Google Gemini 2.0 Flash (무료)
-- Open-Meteo Weather API (무료)
+- **Open-Meteo Weather API** (실시간 날씨, 무료, 빠름)
+- Unsplash API (날씨별 배경 사진, 선택)
 
 ### 프론트엔드
 - React 18 + Vite
 - TailwindCSS + DaisyUI
 - Kakao Map API
+- **날씨별 동적 테마 배경**
 
 ## 🛠️ 설치 및 실행
 
@@ -50,11 +52,12 @@ npm run dev
 
 ## 📱 사용 흐름
 
-1. 위치 권한 허용 → 날씨 정보 로드
-2. 구내식당 메뉴 입력
-3. AI 추천 확인 (3가지)
-4. 메뉴 선택 또는 룰렛
-5. 주변 식당 검색
+1. 위치 권한 허용 → **Open-Meteo API로 실시간 날씨** 정보 로드 (빠른 응답!)
+2. **날씨에 따라 배경 자동 변경** (맑음/비/눈/구름 등)
+3. 구내식당 메뉴 입력
+4. AI 추천 확인 (3가지)
+5. 메뉴 선택 또는 룰렛
+6. 주변 식당 검색
 
 ## 📁 프로젝트 구조
 
@@ -129,6 +132,15 @@ AI 메뉴 추천
 
 ## 💡 핵심 특징
 
+### 🌤️ 날씨 기반 동적 UI
+- **Open-Meteo 실시간 날씨 데이터** 연동 (빠른 응답)
+- 날씨에 따라 **자동으로 배경 변경**
+  - 맑음: 파란 하늘 그라데이션
+  - 비: 보라색 그라데이션
+  - 눈: 따뜻한 그라데이션
+  - 구름많음/흐림: 회색 톤
+- **Unsplash API 연동** 시 실제 날씨 사진 배경
+
 ### CAM 모드 (Cafeteria Avoidance Mode)
 - 구내식당 회피 시 외부식당 우선 추천
 - 도보 0~15분 거리 제한
@@ -141,12 +153,27 @@ AI 메뉴 추천
 
 ### 완전 무료
 - Gemini API 무료
-- Open-Meteo 무료 (API 키 불필요)
+- Open-Meteo API 무료 (API 키 불필요!)
+- Unsplash API 무료 (선택사항)
 - Kakao Map 무료
 
 ## 📝 참고
 
 - Gemini API: https://aistudio.google.com/app/apikey
-- Open-Meteo: https://open-meteo.com/en/docs
+- Open-Meteo: https://open-meteo.com/ (무료, API 키 불필요)
+- Unsplash API: https://unsplash.com/developers (선택사항)
 - Kakao Map: https://developers.kakao.com/
-- 모든 API 키는 코드에 기본값 포함 (즉시 사용 가능)
+- **모든 API 키는 코드에 기본값 포함** (즉시 사용 가능)
+
+## 🎨 날씨별 테마
+
+프로젝트는 날씨 상태에 따라 자동으로 UI 테마가 변경됩니다:
+- ☀️ **맑음**: 청량한 파란색 그라데이션
+- ⛅ **구름많음**: 부드러운 핑크-민트 그라데이션  
+- ☁️ **흐림**: 차분한 회색 톤
+- 🌧️ **비**: 신비로운 보라색 그라데이션
+- ❄️ **눈**: 따뜻한 오렌지-핑크 그라데이션
+- 🔥 **더운 날씨** (28℃+): 열정적인 레드-핑크 그라데이션
+- 🧊 **추운 날씨** (3℃-): 시원한 민트 그라데이션
+
+Unsplash API 키가 설정되면 실제 날씨 사진으로 배경이 대체됩니다!

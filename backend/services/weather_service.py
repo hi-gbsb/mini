@@ -10,7 +10,7 @@ class WeatherService:
     def __init__(self):
         # Open-Meteo는 API 키가 필요 없습니다!
         self.base_url = "https://api.open-meteo.com/v1/forecast"
-        print("✅ Open-Meteo 날씨 서비스 초기화 (무료, API 키 불필요)")
+        print("✅ Open-Meteo 날씨 서비스 초기화 (무료, 빠른 응답)")
     
     def get_location_coords(self, location: str) -> tuple:
         """한국 주요 도시 좌표 (위도, 경도)"""
@@ -34,97 +34,104 @@ class WeatherService:
         return location_coords.get(location, (37.5665, 126.9780))  # 기본값: 서울
     
     async def get_weather(self, location: str = "서울") -> Dict:
-        """Open-Meteo API로 날씨 정보 조회 (무료, API 키 불필요)"""
+        """Open-Meteo API로 날씨 정보 조회 (무료, 빠름)"""
         try:
             lat, lon = self.get_location_coords(location)
             
             params = {
                 "latitude": lat,
                 "longitude": lon,
-                "current": "temperature_2m,relative_humidity_2m,weather_code,precipitation,cloud_cover,wind_speed_10m",
+                "current": "temperature_2m,relative_humidity_2m,weather_code,precipitation,cloud_cover",
                 "timezone": "Asia/Seoul"
             }
             
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    self.base_url,
-                    params=params,
-                    timeout=10.0
-                )
-                response.raise_for_status()
-                data = response.json()
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(self.base_url, params=params)
                 
-                current = data["current"]
-                weather_code = current["weather_code"]
-                
-                weather_data = {
-                    "location": location,
-                    "temperature": round(current["temperature_2m"]),
-                    "sky_condition": self._weather_code_to_korean(weather_code),
-                    "precipitation": "있음" if current["precipitation"] > 0 else "없음",
-                    "humidity": current["relative_humidity_2m"],
-                    "cloud_cover": current["cloud_cover"],
-                    "wind_speed": current["wind_speed_10m"],
-                    "weather_code": weather_code
-                }
-                
-                print(f"✅ {location} 날씨 조회 성공: {weather_data['temperature']}°C, {weather_data['sky_condition']}")
-                return weather_data
-                
+                if response.status_code == 200:
+                    data = response.json()
+                    current = data.get("current", {})
+                    
+                    # 날씨 코드를 한국어로 변환
+                    weather_code = current.get("weather_code", 0)
+                    sky_condition = self._weather_code_to_condition(weather_code)
+                    
+                    # 강수 여부 확인
+                    precipitation = current.get("precipitation", 0)
+                    precipitation_str = "비" if precipitation > 0 else "없음"
+                    
+                    weather_data = {
+                        "location": location,
+                        "temperature": round(current.get("temperature_2m", 20), 1),
+                        "sky_condition": sky_condition,
+                        "precipitation": precipitation_str,
+                        "humidity": int(current.get("relative_humidity_2m", 50)),
+                    }
+                    
+                    print(f"✅ Open-Meteo 날씨 조회 성공: {weather_data}")
+                    return weather_data
+                else:
+                    print(f"⚠️ Open-Meteo API 오류: {response.status_code}")
+                    return self._get_dummy_weather(location)
+                    
         except Exception as e:
-            print(f"⚠️ Open-Meteo API 오류: {str(e)}")
-            # 오류 발생 시 더미 데이터 반환
+            print(f"⚠️ 날씨 API 오류: {e}")
             return self._get_dummy_weather(location)
     
-    def _weather_code_to_korean(self, code: int) -> str:
-        """WMO Weather Code를 한글로 변환
-        
-        Open-Meteo는 WMO(세계기상기구) 표준 날씨 코드를 사용합니다.
-        참고: https://open-meteo.com/en/docs
-        """
-        weather_codes = {
-            0: "맑음",
-            1: "대체로 맑음",
-            2: "구름조금",
-            3: "구름많음",
-            45: "안개",
-            48: "짙은 안개",
-            51: "가랑비",
-            53: "보통 가랑비",
-            55: "강한 가랑비",
-            56: "약한 어는 가랑비",
-            57: "강한 어는 가랑비",
-            61: "약한 비",
-            63: "비",
-            65: "강한 비",
-            66: "약한 어는 비",
-            67: "강한 어는 비",
-            71: "약한 눈",
-            73: "눈",
-            75: "강한 눈",
-            77: "진눈깨비",
-            80: "약한 소나기",
-            81: "소나기",
-            82: "강한 소나기",
-            85: "약한 눈",
-            86: "강한 눈",
-            95: "뇌우",
-            96: "약한 우박을 동반한 뇌우",
-            99: "강한 우박을 동반한 뇌우"
-        }
-        return weather_codes.get(code, "맑음")
+    def _weather_code_to_condition(self, code: int) -> str:
+        """WMO Weather Code를 한국어 날씨 상태로 변환"""
+        # WMO Weather interpretation codes
+        if code == 0:
+            return "맑음"
+        elif code in [1, 2]:
+            return "구름많음"
+        elif code == 3:
+            return "흐림"
+        elif code in [45, 48]:
+            return "안개"
+        elif code in [51, 53, 55, 56, 57]:
+            return "이슬비"
+        elif code in [61, 63, 65, 66, 67]:
+            return "비"
+        elif code in [71, 73, 75, 77]:
+            return "눈"
+        elif code in [80, 81, 82]:
+            return "소나기"
+        elif code in [85, 86]:
+            return "눈"
+        elif code in [95, 96, 99]:
+            return "뇌우"
+        else:
+            return "맑음"
     
     def _get_dummy_weather(self, location: str) -> Dict:
         """테스트용 더미 날씨 데이터"""
+        print(f"🌤️ 더미 날씨 데이터 사용 ({location})")
+        
+        import random
+        
+        now = datetime.now()
+        hour = now.hour
+        
+        # 시간대별 현실적인 날씨
+        if 6 <= hour < 12:  # 아침
+            temp = random.uniform(15, 25)
+            sky = random.choice(["맑음", "구름많음"])
+        elif 12 <= hour < 18:  # 오후
+            temp = random.uniform(20, 30)
+            sky = random.choice(["맑음", "구름많음", "흐림"])
+        elif 18 <= hour < 22:  # 저녁
+            temp = random.uniform(18, 28)
+            sky = random.choice(["맑음", "구름많음"])
+        else:  # 밤
+            temp = random.uniform(12, 22)
+            sky = random.choice(["맑음", "구름많음", "흐림"])
+        
         return {
             "location": location,
-            "temperature": 15,
-            "sky_condition": "맑음",
+            "temperature": round(temp, 1),
+            "sky_condition": sky,
             "precipitation": "없음",
-            "humidity": 60,
-            "cloud_cover": 20,
-            "wind_speed": 3.5,
-            "weather_code": 0,
-            "note": "Open-Meteo API 연결 실패 시 더미 데이터입니다."
+            "humidity": random.randint(40, 80),
+            "note": "Open-Meteo API 응답 없음 - 더미 데이터"
         }
-

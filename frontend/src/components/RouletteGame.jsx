@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 
-const RouletteGame = ({ menus, onResult, onBack }) => {
+const RouletteGame = ({ menus, weather, location, onResult, onBack }) => {
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState(null);
@@ -40,23 +40,49 @@ const RouletteGame = ({ menus, onResult, onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary to-secondary py-8 px-4">
+    <div className="min-h-screen py-8 px-4">
+      {/* 상단 날씨 정보 */}
+      {weather && (
+        <div className="absolute top-4 right-4 glass rounded-xl shadow-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-yellow-300/80 flex items-center justify-center">
+              <span className="text-xl">
+                {weather.sky_condition === '맑음' ? '☀️' : 
+                 weather.sky_condition === '구름많음' ? '⛅' : 
+                 weather.sky_condition === '흐림' ? '☁️' : 
+                 weather.sky_condition === '비' ? '🌧️' : 
+                 weather.sky_condition === '눈' ? '❄️' : '🌤️'}
+              </span>
+            </div>
+            <div>
+              <div className="text-[13px] text-slate-500">현재 위치</div>
+              <div className="font-semibold">{location || weather.location}</div>
+            </div>
+          </div>
+          <div className="chip rounded-xl px-3 py-1.5 text-sm font-medium text-slate-700 mt-2">
+            {weather.temperature}°C
+          </div>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto">
         {/* 헤더 */}
         <div className="text-center mb-8">
           <button
             onClick={onBack}
-            className="btn btn-ghost absolute top-4 left-4"
+            className="glass rounded-xl px-4 py-2 absolute top-4 left-4 hover:bg-white/90"
           >
             ← 뒤로가기
           </button>
           
-          <h1 className="text-6xl font-bold text-base-100 mb-4 drop-shadow-lg">
-            🎰 밥뭇나?! 룰렛
-          </h1>
-          <p className="text-base-100 text-xl drop-shadow">
-            운명에 맡겨보세요!
-          </p>
+          <div className="glass rounded-3xl p-6 shadow-2xl inline-block">
+            <h1 className="text-5xl md:text-6xl font-bold text-slate-800 mb-2">
+              🎰 밥뭇나?! 룰렛
+            </h1>
+            <p className="text-slate-600 text-lg">
+              운명에 맡겨보세요!
+            </p>
+          </div>
         </div>
 
         {/* 룰렛 컨테이너 */}
@@ -130,11 +156,14 @@ const RouletteGame = ({ menus, onResult, onBack }) => {
             <button
               onClick={spin}
               disabled={isSpinning}
-              className="btn btn-lg btn-primary text-2xl px-12 py-6"
+              className="btn-primary rounded-xl text-2xl px-12 py-6 disabled:opacity-50"
             >
               {isSpinning ? (
                 <>
-                  <span className="loading loading-spinner"></span>
+                  <svg className="spinner h-6 w-6 inline-block mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" opacity=".2"></circle>
+                    <path d="M12 2a10 10 0 0 1 10 10"></path>
+                  </svg>
                   돌리는 중...
                 </>
               ) : (
@@ -143,8 +172,8 @@ const RouletteGame = ({ menus, onResult, onBack }) => {
             </button>
           </div>
         ) : (
-          <div className="card bg-base-100 shadow-2xl">
-            <div className="card-body text-center">
+          <div className="glass rounded-3xl shadow-2xl p-8">
+            <div className="text-center">
               <div className="text-6xl mb-4">🎉</div>
               <h2 className="card-title text-4xl justify-center mb-4">
                 {result.display_name || result.menu}
@@ -156,16 +185,16 @@ const RouletteGame = ({ menus, onResult, onBack }) => {
               <p className="text-base-content/80 mb-6 leading-relaxed">
                 {result.reason}
               </p>
-              <div className="card-actions justify-center gap-4">
+              <div className="flex justify-center gap-4 mt-6">
                 <button
                   onClick={spin}
-                  className="btn btn-ghost"
+                  className="glass rounded-xl px-6 py-3 text-[15px] font-semibold hover:bg-white/90"
                 >
                   🔄 다시 돌리기
                 </button>
                 <button
                   onClick={() => onResult(result.menu)}
-                  className="btn btn-success"
+                  className="btn-primary rounded-xl px-6 py-3 text-[15px] font-semibold"
                 >
                   ✓ 이 메뉴로 결정!
                 </button>
@@ -176,23 +205,19 @@ const RouletteGame = ({ menus, onResult, onBack }) => {
 
         {/* 메뉴 목록 */}
         {!result && (
-          <div className="card bg-base-100/20 backdrop-blur-sm shadow-xl mt-8">
-            <div className="card-body">
-              <h3 className="card-title text-base-100">📋 후보 메뉴</h3>
-              <div className="grid grid-cols-3 gap-3">
+          <div className="glass rounded-3xl shadow-xl mt-8 p-6">
+            <h3 className="text-xl font-bold text-slate-800 mb-4">📋 후보 메뉴</h3>
+            <div className="grid grid-cols-3 gap-3">
                 {menus.map((menu, index) => (
                   <div
                     key={index}
-                    className="card bg-base-100 shadow"
+                    className="glass rounded-xl shadow p-3 text-center"
                   >
-                    <div className="card-body p-3 text-center">
-                      <p className="font-semibold">{menu.display_name || menu.menu}</p>
-                      <p className="text-xs opacity-70">{menu.category}</p>
-                    </div>
+                    <p className="font-semibold text-slate-800">{menu.display_name || menu.menu}</p>
+                    <p className="text-xs text-slate-500">{menu.category}</p>
                   </div>
                 ))}
               </div>
-            </div>
           </div>
         )}
       </div>

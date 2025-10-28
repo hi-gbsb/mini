@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-const RestaurantPage = ({ menuName, location, onBack }) => {
+const RestaurantPage = ({ menuName, weather, location, onBack }) => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [error, setError] = useState(null);
 
@@ -234,20 +234,44 @@ const RestaurantPage = ({ menuName, location, onBack }) => {
   };
 
   return (
-    <div className="min-h-screen bg-base-200 px-4 py-8">
+    <div className="min-h-screen px-4 py-8">
+      {/* 상단 날씨 정보 */}
+      {weather && (
+        <div className="absolute top-4 right-4 glass rounded-xl shadow-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-yellow-300/80 flex items-center justify-center">
+              <span className="text-xl">
+                {weather.sky_condition === '맑음' ? '☀️' : 
+                 weather.sky_condition === '구름많음' ? '⛅' : 
+                 weather.sky_condition === '흐림' ? '☁️' : 
+                 weather.sky_condition === '비' ? '🌧️' : 
+                 weather.sky_condition === '눈' ? '❄️' : '🌤️'}
+              </span>
+            </div>
+            <div>
+              <div className="text-[13px] text-slate-500">현재 위치</div>
+              <div className="font-semibold">{location || weather.location}</div>
+            </div>
+          </div>
+          <div className="chip rounded-xl px-3 py-1.5 text-sm font-medium text-slate-700 mt-2">
+            {weather.temperature}°C
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto">
         <button
           onClick={onBack}
-          className="btn btn-ghost mb-4"
+          className="glass rounded-xl px-4 py-2 mb-4 hover:bg-white/90"
         >
           ← 뒤로가기
         </button>
 
-        <div className="card bg-base-100 shadow-2xl">
+        <div className="glass rounded-3xl shadow-2xl overflow-hidden">
           {/* 헤더 */}
-          <div className="card-body bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-t-2xl">
-            <h2 className="card-title text-3xl mb-2">🗺️ {menuName} 맛집 찾기</h2>
-            <p className="opacity-90">주변의 {menuName} 음식점을 찾아보세요</p>
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 md:p-8">
+            <h2 className="text-3xl md:text-4xl font-bold mb-2">🗺️ {menuName} 맛집 찾기</h2>
+            <p className="opacity-90 text-lg">주변의 {menuName} 음식점을 찾아보세요</p>
           </div>
 
           {/* 지도 */}
@@ -277,23 +301,27 @@ const RestaurantPage = ({ menuName, location, onBack }) => {
           </div>
 
           {/* 안내 메시지 */}
-          <div className="card-body bg-base-200">
-            <div className="alert alert-info">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              <span><strong>📍 현재 위치 기반:</strong> 주변 2km 반경 내 음식점을 표시합니다.</span>
+          <div className="p-6 bg-white/50">
+            <div className="glass rounded-xl p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6 text-blue-500"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span className="text-sm"><strong>📍 현재 위치 기반:</strong> 주변 2km 반경 내 음식점을 표시합니다.</span>
+              </div>
             </div>
             
-            <div className="alert alert-success mt-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <span><strong>💡 Tip:</strong> 마커를 클릭하면 상세 정보(주소, 전화번호)를 확인할 수 있습니다.</span>
+            <div className="glass rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span className="text-sm"><strong>💡 Tip:</strong> 마커를 클릭하면 상세 정보(주소, 전화번호)를 확인할 수 있습니다.</span>
+              </div>
             </div>
           </div>
 
           {/* 다시 검색 버튼 */}
-          <div className="card-body">
+          <div className="p-6">
             <button
               onClick={onBack}
-              className="btn btn-primary btn-lg w-full"
+              className="btn-primary rounded-xl w-full py-4 text-lg font-semibold"
             >
               다른 메뉴 추천받기 🔄
             </button>
